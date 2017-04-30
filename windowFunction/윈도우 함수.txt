@@ -1,0 +1,142 @@
+윈도우 함수
+
+- 분석 함수를 사용할 때 계산 대상이 되는 로우의 그룹을 의미
+- 분석 함수중에 윈도우 절(window clause)을 사용한 함수들을 통칭하여 윈도우 함수라고 한다. (일부 함수만 이를 사용할 수 있다.)
+- PARTITION BY 절에 의한 그룹 : 분석 함수가 계산을 수행하는 전체 그룹
+  윈도우 절에 의해 명시된 그룹 : 전체 그룹에서 일부분을 뗀 부분 그룹 혹은 부분 집합
+- 윈도우 함수 (10g 기준)
+  AVG, CORR, COVAR_POP, COVAR_SAMP, COUNT, FIRST_VALUE, LAST_VALUE, MAX, MIN, STDDEV, STDDEV_POP, STDDEV_SAMP, SUM, VAR_POP, VAR_SAMP, VARIANCE 등
+
+[구분 형식]
+윈도우함수 OVER ( PARTITION BY expr ORDER BY expr [ASC | DESC] ROWS[RANGE] BETWEEN UNBOUNDED PRECEDING[CURRENT ROW] AND UNBOUNDED FOLLOWING[CURRENT ROW] )
+
+ROWS : 부분집합인 윈도우 크기를 물리적인 단위로 행 집합을 지정
+RANGE : 논리적인 주소에 의해 행 집합을 지정
+BETWEEN ~ AND : 윈도우의 시작과 끝 위치를 지정
+UNBOUNDED PRECEDING : 윈도우 시작 위치가 첫 번째 로우임을 의미
+UNBOUNDED FOLLOWING : 윈도우 마지막 위치가 마지막 로우임을 위미
+CURRENT ROW : 윈도우 시작 위치가 현재 로우임을 의미
+☞ 정리하면, 윈도우 절은 PARTITION BY 절로 명시된 전체 그룹에서 부분 집합인 윈도우를 지정하는데, 그 시작과 끝 범위는 BETWEEN a AND b 형태로 지정되며, a와 b 값에 따라 윈도우 함수가 그 계산을 수행하게 된다.
+
+
+  SELECT DEPT
+       , ID
+       , SALARY
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) COL1
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW        ) COL2
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN CURRENT ROW         AND UNBOUNDED FOLLOWING) COL3
+    FROM (
+          SELECT 10 DEPT, 100 ID, 39000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 101 ID, 30000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 102 ID,  9000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 103 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 104 ID, 60000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 105 ID,  9500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 106 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 107 ID, 37500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 108 ID, 25000 SALARY FROM DUAL UNION ALL
+          SELECT 30 DEPT, 109 ID,  5000 SALARY FROM DUAL UNION ALL
+          SELECT 40 DEPT, 110 ID, 17000 SALARY FROM DUAL
+         )
+  WHERE DEPT = 20
+  ;
+
+  ----------------------------------------------------------
+  DEPT    ID      SALARY      COL1        COL2        COL3
+  ----------------------------------------------------------
+  20      101     30000       205000      30000       205000
+  20      102     9000        205000      39000       175000
+  20      103     17000       205000      56000       166000
+  20      104     60000       205000      116000      149000
+  20      105     9500        205000      125500      89000
+  20      106     17000       205000      142500      79500
+  20      107     37500       205000      180000      62500
+  20      108     25000       205000      205000      25000
+  ----------------------------------------------------------
+COL1 : 첫 번째 로우(UNBOUNDED PRECEDING)부터 마지막 로우(UNBOUNDED FOLLOWING) 까지의 합
+COL2 : 첫 번째 로우(UNBOUNDED PRECEDING) 부터 현재 로우(CURRENT ROW) 까지의 합
+COL3 : 현재 로우(CURRENT ROW) 부터 마지막 로우(UNBOUNDED FOLLOWING) 까지의 합
+
+  SELECT DEPT
+       , ID
+       , SALARY
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) COL1
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) COL2
+       , SUM(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) COL3
+    FROM (
+          SELECT 10 DEPT, 100 ID, 39000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 101 ID, 30000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 102 ID,  9000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 103 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 104 ID, 60000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 105 ID,  9500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 106 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 107 ID, 37500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 108 ID, 25000 SALARY FROM DUAL UNION ALL
+          SELECT 30 DEPT, 109 ID,  5000 SALARY FROM DUAL UNION ALL
+          SELECT 40 DEPT, 110 ID, 17000 SALARY FROM DUAL
+         )
+  WHERE DEPT = 20
+  ;
+
+  ----------------------------------------------------------
+  DEPT    ID      SALARY      COL1        COL2        COL3
+  ----------------------------------------------------------
+  20      101     30000       39000       30000       39000
+  20      102     9000        56000       39000       26000
+  20      103     17000       86000       26000       77000
+  20      104     60000       86500       77000       69500
+  20      105     9500        86500       69500       26500
+  20      106     17000       64000       26500       54500
+  20      107     37500       79500       54500       62500
+  20      108     25000       62500       62500       25000
+  ----------------------------------------------------------
+COL1 : 현재 로우를 중심으로 이전 로우(1 PRECEDING)와 다음 로우(1 FOLLOWING)까지의 합
+COL2 : 이전 로우(1 PRECEDING)와 현재 로우(CURRENT ROW)의 합
+COL3 : 현재 로우(CURRENT ROW)와 다음 로우(1 FOLLOWING)의 합
+   ☞ 만약 1 대신 2를 명시하면 이전과 이후 2개의 로우의 합을 계산한다.
+
+- FIRST_VALUE와 LAST_VALUE
+  : 윈도우 절과 함께 사용되어 가장 첫 번째 로우와 가장 마지막 로우의 값을 반환한다.
+  : 윈도우 함수를 사용하면서 계산이 어느 범위에서 이루어지는지 어리버리할 때 사용하면 좋다.
+
+  SELECT DEPT
+       , ID
+       , SALARY
+       , FIRST_VALUE(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) COL1_FIRST
+       , LAST_VALUE (SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) COL1_LAST
+       , FIRST_VALUE(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW        ) COL2_FIRST
+       , LAST_VALUE (SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW        ) COL2_LAST
+       , FIRST_VALUE(SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN CURRENT ROW         AND UNBOUNDED FOLLOWING) COL3_FIRST
+       , LAST_VALUE (SALARY) OVER (PARTITION BY DEPT ORDER BY ID ROWS BETWEEN CURRENT ROW         AND UNBOUNDED FOLLOWING) COL3_LAST
+    FROM (
+          SELECT 10 DEPT, 100 ID, 39000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 101 ID, 30000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 102 ID,  9000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 103 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 104 ID, 60000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 105 ID,  9500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 106 ID, 17000 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 107 ID, 37500 SALARY FROM DUAL UNION ALL
+          SELECT 20 DEPT, 108 ID, 25000 SALARY FROM DUAL UNION ALL
+          SELECT 30 DEPT, 109 ID,  5000 SALARY FROM DUAL UNION ALL
+          SELECT 40 DEPT, 110 ID, 17000 SALARY FROM DUAL
+         )
+  WHERE DEPT = 20
+  ;
+
+  ---------------------------------------------------------------------------------------------
+  DEPT    ID      SALARY  COL1_FIRST  COL1_LAST   COL2_FIRST  COL2_LAST   COL3_FIRST  COL3_LAST
+  ---------------------------------------------------------------------------------------------
+  20      101     30000   30000       25000       30000       30000       30000       25000
+  20      102     9000    30000       25000       30000       9000        9000        25000
+  20      103     17000   30000       25000       30000       17000       17000       25000
+  20      104     60000   30000       25000       30000       60000       60000       25000
+  20      105     9500    30000       25000       30000       9500        9500        25000
+  20      106     17000   30000       25000       30000       17000       17000       25000
+  20      107     37500   30000       25000       30000       37500       37500       25000
+  20      108     25000   30000       25000       30000       25000       25000       25000
+  ---------------------------------------------------------------------------------------------
+
+
+☞ 보통 분석 함수를 사용하면서 윈도우 절을 생략할 때가 많은데 이러한 경우에는 디폴트로 BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING이 적용된다.
